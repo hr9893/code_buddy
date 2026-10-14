@@ -1,0 +1,20 @@
+# Secrets and local environment configuration
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# IDE and editor files
+.idea/
+.vscode/
+
+# Runtime databases and vector-store data
+data/
+
+# Logs
+*.log

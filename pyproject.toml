@@ -1,0 +1,27 @@
+[project]
+name = "code-buddy"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic-settings>=2.15.0",
+    "langchain>=1.2.15",
+    "langchain-community>=0.4.1",
+    "langchain-core>=1.2.26",
+    "langgraph>=1.1.6",
+    "pygithub>=2.9.0",
+    "deepagents>=0.7.21",
+    "langchain-openai>=1.1.0",
+    "python-dotenv>=1.2.3",
+    "prompt-toolkit>=3.0.52",
+]
+
+[dependency-groups]
+dev = [
+    "black[d]>=24.10.0",
+]
+
+[tool.black]
+line-length = 88
+target-version = ["py312"]

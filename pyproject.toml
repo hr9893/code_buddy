@@ -15,11 +15,15 @@ dependencies = [
     "langchain-openai>=1.1.0",
     "python-dotenv>=1.2.3",
     "prompt-toolkit>=3.0.52",
+    "langchain-litellm>=0.11.1",
+    "litellm>=1.105.1",
+    "typesafe-sdk>=0.7.5",
 ]
 
 [dependency-groups]
 dev = [
     "black[d]>=24.10.0",
+    "pytest>=9.1.1",
 ]
 
 [tool.black]

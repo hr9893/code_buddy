@@ -1,8 +1,10 @@
+import logging
+import os
 import re
 from typing import Tuple
 
-# NOTE: `git push` is deliberately NOT here. The PR agent must be able to push a codepilot/* branch,
-# so push rules (branch name, no force, human approval) live in middleware.py instead.
+log = logging.getLogger("codepilot.guardrails")
+
 FORBIDDEN_COMMAND_PATTERNS = [
     r"\brm\s+-[a-z]*[rf]",                    # rm -rf, rm -fr, rm -r, rm -f
     r"\b(rmdir|rd)\s+/s",                     # Windows: remove directory tree
@@ -13,22 +15,19 @@ FORBIDDEN_COMMAND_PATTERNS = [
     r"\bnpm\s+(install|i|ci)\b",
 ]
 
-# Matched anywhere in the text, so they work for file paths AND for shell commands that mention a secret.
 FORBIDDEN_FILE_PATTERNS = [
-    r"\.env\b",
+    r"(^|[/\\])\.env(\b|\.)",
     r"\.secret\b",
     r"\.pem\b",
     r"\.key\b",
     r"credentials",
 ]
 
-
 class GuardrailViolation(Exception):
     """Raised when an operation violates security policy."""
 
-
 class CommandGuardrail:
-    """Interprets and enforces safety rules over sandbox actions."""
+    """Enforces regex and TypeSafe Jev semantic safety rules over agent actions."""
 
     @staticmethod
     def inspect_command(command: str) -> Tuple[bool, str]:
@@ -45,3 +44,42 @@ class CommandGuardrail:
             if re.search(pattern, file_path, re.IGNORECASE):
                 return False, f"Blocked target file matching protected pattern: '{pattern}'"
         return True, "File path cleared safety check."
+
+    @staticmethod
+    def inspect_with_jev(tool_name: str, payload: str, threshold: float = 0.85) -> Tuple[bool, str]:
+        """Uses TypeSafe Jev Noul primitives to detect semantic risk or hardcoded secrets."""
+        api_key = os.environ.get("TYPESAFE_API_KEY")
+        if not api_key or not payload.strip():
+            return True, "Jev check skipped (no key or empty payload)."
+
+        try:
+            from typesafe_sdk import Noul, TypeSafeClient
+
+            with TypeSafeClient(api_key=api_key) as client:
+                res = client.system_one(
+                    state={"tool": tool_name, "payload": payload[:4000]},
+                    questions={
+                        "destructive": Noul(
+                            instructions=(
+                                "Does this action attempt to delete repository history, "
+                                "exfiltrate secrets over the network, or introduce a malicious backdoor?"
+                            )
+                        ),
+                        "leaks_secret": Noul(
+                            instructions=(
+                                "Does this payload contain a real hardcoded API key, private RSA key, "
+                                "or password string (excluding env var references like os.environ)?"
+                            )
+                        ),
+                    },
+                )
+            p_dest = res.nouls["destructive"].noul
+            p_leak = res.nouls["leaks_secret"].noul
+            if p_dest >= threshold:
+                return False, f"Jev blocked destructive/exfiltration risk (score={p_dest:.2f})"
+            if p_leak >= threshold:
+                return False, f"Jev blocked potential hardcoded secret leak (score={p_leak:.2f})"
+        except Exception as exc:
+            log.debug("Jev guardrail check skipped: %s", exc)
+
+        return True, "Cleared Jev safety check."

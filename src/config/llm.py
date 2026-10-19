@@ -116,13 +116,25 @@ class FallbackChatLiteLLM(ChatLiteLLM):
         cooled = [m for m in candidates if _MODEL_COOLDOWN_UNTIL.get(m, 0.0) > now]
         ordered = active + cooled
 
+        # Check if LiteLLM Proxy UI is configured (e.g. via docker-compose.yml)
+        proxy_url = os.environ.get("LITELLM_PROXY_URL")
+        proxy_key = os.environ.get("LITELLM_PROXY_KEY", "sk-codepilot-admin-1234")
+
         last_exc: Exception | None = None
         for idx, candidate in enumerate(ordered):
             call_kwargs = dict(kwargs)
-            call_kwargs["model"] = candidate
-            call_kwargs["api_key"] = _get_key_for_model(candidate)
             call_kwargs["num_retries"] = 0  # Failover immediately instead of sleeping on 429
-            call_kwargs.pop("api_base", None)
+
+            if proxy_url:
+                # Route through LiteLLM Proxy UI container so logs, RBAC & spend appear in /ui
+                call_kwargs["model"] = f"openai/{candidate}"
+                call_kwargs["api_base"] = proxy_url
+                call_kwargs["api_key"] = proxy_key
+            else:
+                # Direct SDK call when running locally without the proxy container
+                call_kwargs["model"] = candidate
+                call_kwargs["api_key"] = _get_key_for_model(candidate)
+                call_kwargs.pop("api_base", None)
 
             try:
                 if idx > 0:

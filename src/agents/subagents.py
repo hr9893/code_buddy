@@ -12,6 +12,7 @@ from src.github.tool_sets import (
     get_repo_explorer_tools,
 )
 from src.skills.skill_loader import load_skill
+from src.guardrails.middleware import guardrails
 
 
 @traceable(name="create_repo_explorer_agent", run_type="chain")
@@ -21,7 +22,10 @@ def create_repo_explorer_agent(effort: str = "moderate"):
         model=get_model("fast"),
         tools=get_repo_explorer_tools(),
         system_prompt=REPO_EXPLORER_PROMPT,
-        middleware=[trace_tool_calls("repo-explorer")],
+        middleware=[
+            trace_tool_calls("repo-explorer"),
+            guardrails
+        ],
     )
 
 
@@ -49,7 +53,10 @@ def create_coder_agent(
         model=get_model("coder"),
         tools=get_coder_tools(issue_number),
         system_prompt=prompt,
-        middleware=[trace_tool_calls("coder", on_pr_created)],
+        middleware=[
+            trace_tool_calls("coder", on_pr_created),
+            guardrails
+        ],
     )
 
 
@@ -66,5 +73,8 @@ def create_pr_agent(
         system_prompt=PR_PROMPT.replace(
             "{issue_number}", str(issue_number or "manual")
         ),
-        middleware=[trace_tool_calls("pr-agent", on_pull_request_created)],
+        middleware=[
+            trace_tool_calls("pr-agent", on_pull_request_created),
+            guardrails
+        ],
     )

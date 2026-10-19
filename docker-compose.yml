@@ -1,0 +1,60 @@
+services:
+  # 1. Postgres DB for LiteLLM Admin UI (RBAC, Projects, Virtual Keys, Logs)
+  litellm-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: llmproxy
+      POSTGRES_PASSWORD: dbpassword9090
+    volumes:
+      - litellm_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U llmproxy -d litellm"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. LiteLLM Proxy + Admin UI (http://localhost:4000/ui)
+  litellm-proxy:
+    image: ghcr.io/berriai/litellm:main-latest
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: "postgresql://llmproxy:dbpassword9090@litellm-db:5432/litellm"
+      LITELLM_MASTER_KEY: "sk-codepilot-admin-1234"
+      UI_USERNAME: "admin"
+      UI_PASSWORD: "sk-codepilot-admin-1234"
+      STORE_MODEL_IN_DB: "True"
+    volumes:
+      - ./litellm_config.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    depends_on:
+      litellm-db:
+        condition: service_healthy
+
+  # 3. Your Code-Buddy Service
+  code-buddy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATA_DIR: /app/data
+      GITHUB_APP_PRIVATE_KEY: /app/github-app.pem
+      LITELLM_PROXY_URL: http://litellm-proxy:4000
+      LITELLM_PROXY_KEY: sk-codepilot-admin-1234
+    volumes:
+      - code_buddy_data:/app/data
+      - "C:/PERSONAL/AI/CodeBasic/Projects/multi-agent/my-multi-agent-work.2026-09-06.private-key.pem:/app/github-app.pem:ro"
+    depends_on:
+      - litellm-proxy
+    init: true
+    stdin_open: true
+    tty: true
+
+volumes:
+  code_buddy_data:
+  litellm_db_data:

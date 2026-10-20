@@ -177,7 +177,7 @@ Copy `.env.example` to `.env` and provide the GitHub App credentials, repository
 
 | Variable/setting | Purpose |
 | --- | --- |
-| `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_REPOSITORY` | GitHub App authentication and target repository |
+| `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_REPOSITORY` | GitHub App ID, host path to its PEM file (Docker), and target repository |
 | `GROQ_API_KEY`, `DEEPSEEK_API_KEY`, `OPENAI_API_KEY` | Provider credentials for configured model tiers |
 | `TYPESAFE_API_KEY`, optional `TYPESAFE_MODEL` | TypeSafe JEV classification and semantic checks; default model is `jev-1.13.0` |
 | `CODER_MODEL`, `FAST_MODEL`, `FALLBACK_MODEL` | Role model overrides |
@@ -309,10 +309,29 @@ The console uses normal terminal scrollback. Enter `help` to see commands such a
 
 ## Run with Docker Compose
 
-Copy `.env.example` to `.env`, fill in the GitHub and model-provider configuration, and review the GitHub private-key volume mapping in `docker-compose.yml` for your machine before starting the services:
+On first use, copy `.env.example` to `.env` and fill in the GitHub and
+model-provider configuration. Set `GITHUB_APP_PRIVATE_KEY` to the full path
+of your GitHub App PEM file on the host. On Windows, use forward slashes,
+for example `C:/Users/you/keys/github-app.pem`. Compose mounts that file
+read-only at `/app/github-app.pem` and passes the container path to the GitHub
+client, which reads the PEM contents from the file. Keep the PEM file outside
+the repository.
+
+After that setup, start Code Buddy interactively with one command from the
+repository root:
 
 ```powershell
-docker compose up --build
+docker compose run --build --rm code-buddy
 ```
 
-Compose starts Code Buddy, the LiteLLM proxy, and its PostgreSQL backing service. Runtime application data and LiteLLM database data are stored in separate Docker volumes. Stop the console with `Ctrl+C`; run `docker compose down` to stop and remove containers while retaining volumes. `docker compose down --volumes` also removes the stored volume data.
+`docker compose run` keeps stdin attached and allocates a terminal for the
+interactive console. It builds the Code Buddy image and starts the
+LiteLLM/PostgreSQL dependencies automatically. Type `help` to see commands,
+then `start` to begin polling. Stop Code Buddy with `Ctrl+C`; the one-off
+application container is removed automatically, but its dependencies may
+remain running. Run `docker compose down` to stop those services while
+retaining the SQLite and LiteLLM database volumes.
+
+`docker compose up --attach code-buddy` is useful for following service logs,
+but may not forward keyboard input to the console. Do not use it when you need
+to type interactive commands.

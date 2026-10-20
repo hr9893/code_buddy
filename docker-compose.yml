@@ -48,7 +48,10 @@ services:
       LITELLM_PROXY_KEY: sk-codepilot-admin-1234
     volumes:
       - code_buddy_data:/app/data
-      - "C:/PERSONAL/AI/CodeBasic/Projects/multi-agent/my-multi-agent-work.2026-09-06.private-key.pem:/app/github-app.pem:ro"
+      - type: bind
+        source: ${GITHUB_APP_PRIVATE_KEY:?Set GITHUB_APP_PRIVATE_KEY in .env to the path of your GitHub App PEM file}
+        target: /app/github-app.pem
+        read_only: true
     depends_on:
       - litellm-proxy
     init: true

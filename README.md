@@ -18,6 +18,9 @@ The project is designed around bounded, purpose-specific agents and GitHub API o
 - [Run the terminal console](#run-the-terminal-console)
 - [Run with Docker Compose](#run-with-docker-compose)
 
+## Video recording link : [Click here to watch the project demo video](URL_TO_YOUR_VIDEO)
+
+
 ## Architecture at a glance
 
 Four ideas keep the system small, cheap, and predictable:
